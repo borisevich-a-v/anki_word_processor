@@ -1,0 +1,5 @@
+tutorial.db
+*.tsv
+.env
+.venv
+.idea

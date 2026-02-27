@@ -1,4 +1,4 @@
-tutorial.db
+internal.db
 *.tsv
 .env
 .venv

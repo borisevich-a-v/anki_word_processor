@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 import sqlite3
 
-MAX_CARDS_TO_PROCESS = 10
+MAX_CARDS_TO_PROCESS = 100
 
 con = sqlite3.connect("internal.db")
 cur = con.cursor()

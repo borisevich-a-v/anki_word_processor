@@ -1,5 +1,10 @@
 internal.db
+
 *.tsv
+*.txt
+
 .env
+
 .venv
+
 .idea

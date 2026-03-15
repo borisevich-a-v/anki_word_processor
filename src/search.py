@@ -34,6 +34,7 @@ class Chunk(BaseModel):
 
 def split_text_to_chunks(text: str) -> list[Chunk]:
     # not the optimal way to retrieve context, but the simplest
+    # TODO reduce context length, to make it cheaper for LLM
 
     tokens = text.split()
     res: list[Chunk] = []
@@ -66,17 +67,25 @@ def split_text_to_chunks(text: str) -> list[Chunk]:
     return res
 
 
-def insert_text_chunk(nlp: Language, text: str) -> None:
+def insert_text_chunk(nlp: Language, text: str, context: str) -> None:
+    # TODO: insert many
     data = lemmatize(nlp, text)
 
     conn.execute(
         "INSERT INTO text_data(original_text, lemmatized_text, context) VALUES (?, ?, ?)",
-        (text, data, "metadata"),
+        (text, data, context),
     )
     conn.commit()
 
 
+def ingest_text(nlp: Language, text: str) -> None:
+    chunks = split_text_to_chunks(text)
+    for chunk in chunks:
+        insert_text_chunk(nlp, chunk.chunk, chunk.context)
+
+
 def find_exact_word(word: str) -> list[tuple[str, str, str]]:
+    # TODO: return a custom type
     rows = conn.execute(
         "SELECT * FROM text_data WHERE original_text MATCH ?", (word,)
     ).fetchall()

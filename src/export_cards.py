@@ -1,9 +1,11 @@
+"""Export from internal DB into anki format"""
+
 print("Running export")
 
 import sqlite3
 import csv
 
-OUTPUT_FILE = "../anki_output.tsv"
+OUTPUT_FILE = "../data/anki_output.tsv"
 
 con = sqlite3.connect("../internal.db")
 cur = con.cursor()

@@ -27,9 +27,10 @@ def prepare_example_work(eng_nlp) -> None:
     insert_text_chunk(
         eng_nlp,
         "What are you doing buddy in here? This is undignified sir. I only sold the armor I've wrought",
+        "1"
     )
-    insert_text_chunk(eng_nlp, "I work for him")
-    insert_text_chunk(eng_nlp, "unrelated")
+    insert_text_chunk(eng_nlp, "I work for him", "2")
+    insert_text_chunk(eng_nlp, "unrelated", "3")
 
 
 def test_lemmatize_eng(eng_nlp):
@@ -253,7 +254,7 @@ English versions from the 1914 translation by H. Rackham."""
 
 def test_find_exact_different_word_forms(prepare_example_work):
     res = find_exact_word("work")
-    assert res == [('I work for him', 'I work for he', 'metadata')]
+    assert res == [('I work for him', 'I work for he', '2')]
 
     res = find_exact_word("works")
     assert res == []
@@ -265,16 +266,16 @@ def test_find_exact_different_word_forms(prepare_example_work):
     assert res == [(
              "What are you doing buddy in here? This is undignified sir. I only sold the armor I've wrought",
              "what be you do buddy in here ? this be undignified sir . I only sell the armor I have work",
-             "metadata",
+             "1",
          )
     ]
 
 def test_find_different_word_forms(eng_nlp, prepare_example_work):
     expected_output = {
-        ('I work for him', 'I work for he', 'metadata'),
+        ('I work for him', 'I work for he', '2'),
         ("What are you doing buddy in here? This is undignified sir. I only sold the armor I've wrought",
          "what be you do buddy in here ? this be undignified sir . I only sell the armor I have work",
-         "metadata",
+         "1",
          )
     }
 

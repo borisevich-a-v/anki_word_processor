@@ -1,4 +1,5 @@
 import csv
+from pathlib import Path
 from typing import Literal
 
 from openai import OpenAI
@@ -8,9 +9,15 @@ from dotenv import load_dotenv
 
 import sqlite3
 
+from spacy import Language
+
+from search import find_exact_word, find_word, get_nlp, SpacyPipeline, ingest_text
+
 load_dotenv()
 
-MAX_CARDS_TO_PROCESS = 100
+MAX_CARDS_TO_PROCESS = 2
+
+data_folder = Path(__file__).parents[1] / "data"
 
 con = sqlite3.connect("../internal.db")
 cur = con.cursor()
@@ -104,19 +111,43 @@ def is_processed(word: str) -> bool:
     return bool(res)
 
 
-def main():
-    cards = []
-    with open("../anki_clean_nohtml.tsv", newline="", encoding="utf-8") as f:
-        reader = csv.reader(f, delimiter="\t")
-        for i, row in enumerate(reader):
-            word = row[0]
-            if not is_processed(word):
-                cards.append(row)
-            else:
-                print(f"Skipping {word}")
+def search_context_for_word(nlp: Language, word: str) -> str:
 
-    for card, _ in zip(cards, range(MAX_CARDS_TO_PROCESS)):
-        print(f"Processing {card[0]}")
+    def format_context(data: list[tuple[str, str, str]]) -> str:
+        return '\n'.join([f"[[{i + 1}]]: {r[2]}" for i, r in enumerate(data[:5])])
+
+    if res := find_exact_word(word):
+        return format_context(res)
+    if res := find_word(nlp, word):
+        return format_context(res)
+    return ''
+
+
+def main():
+    words_to_process = []
+    nlp = get_nlp(SpacyPipeline.RUSSIAN)
+
+    print("Ingesting text")
+    ingest_text(nlp, (data_folder / 'Knight7.txt').read_text())
+
+    print("Reading words")
+    target_words = (data_folder /'target_words.txt').read_text().split('\n')
+
+    for word in target_words:
+        if not is_processed(word):
+            print("Found a word to process")
+            words_to_process.append(word)
+        else:
+            print(f"Skipping {word}. As it was processed")
+
+    for word, _ in zip(words_to_process, range(MAX_CARDS_TO_PROCESS)):
+        print(f"Processing word: {word}")
+
+        card = f"<TARGET WORD>{word}</TARGET WORD>"
+        context = search_context_for_word(nlp, word)
+        print(f"For {word} found context: {context}")
+        card += f"<CONTEXT OF USAGE>\n{context}\n<CONTEXT OF USAGE>"
+
         processed_card = process_cards(card)
         save_card(processed_card)
 

@@ -1,3 +1,6 @@
+import pytest
+from spacy import Language
+
 from search import (
     get_nlp,
     SpacyPipeline,
@@ -5,19 +8,39 @@ from search import (
     split_text_to_chunks,
     Chunk,
     insert_text_chunk,
-    find_exact_word,
+    find_exact_word, find_word,
 )
 
 
-def test_lemmatize_eng():
-    nlp = get_nlp(SpacyPipeline.ENGLISH)
+@pytest.fixture
+def eng_nlp() -> Language:
+    return get_nlp(SpacyPipeline.ENGLISH)
+
+
+@pytest.fixture
+def rus_nlp() -> Language:
+    return get_nlp(SpacyPipeline.RUSSIAN)
+
+
+@pytest.fixture
+def prepare_example_work(eng_nlp) -> None:
+    insert_text_chunk(
+        eng_nlp,
+        "What are you doing buddy in here? This is undignified sir. I only sold the armor I've wrought",
+    )
+    insert_text_chunk(eng_nlp, "I work for him")
+    insert_text_chunk(eng_nlp, "unrelated")
+
+
+def test_lemmatize_eng(eng_nlp):
+
     text = (
         "What are you doing buddy in here?"
         " This is undignified sir."
         "I only sold the armor I've wrought"
     )
 
-    res = lemmatize(nlp, text)
+    res = lemmatize(eng_nlp, text)
 
     assert (
         res
@@ -25,15 +48,14 @@ def test_lemmatize_eng():
     )
 
 
-def test_lemmatize_rus():
-    nlp = get_nlp(SpacyPipeline.RUSSIAN)
+def test_lemmatize_rus(rus_nlp):
     text = (
         "Доколе ты будешь здесь ошиваться?"
         " Гистерезис это интересное явление."
         "Она - невероятно добрая"
     )
 
-    res = lemmatize(nlp, text)
+    res = lemmatize(rus_nlp, text)
 
     assert (
         res
@@ -229,22 +251,42 @@ English versions from the 1914 translation by H. Rackham."""
     ]
 
 
-def test_insert_text_chunk():
-    nlp = get_nlp(SpacyPipeline.ENGLISH)
-    insert_text_chunk(
-        nlp,
-        "What are you doing buddy in here? This is undignified sir. I only sold the armor I've wrought",
-    )
-    res = find_exact_word("wrought")
-    assert res[0] == (
-            "What are you doing buddy in here? This is undignified sir. I only sold the armor I've wrought",
-            "what be you do buddy in here ? this be undignified sir . I only sell the armor I have work",
-            "metadata",
-        )
-
-
+def test_find_exact_different_word_forms(prepare_example_work):
     res = find_exact_word("work")
+    assert res == [('I work for him', 'I work for he', 'metadata')]
+
+    res = find_exact_word("works")
     assert res == []
 
+    res = find_exact_word("worked")
+    assert res == []
 
-test_split_text_to_chunks()
+    res = find_exact_word("wrought")
+    assert res == [(
+             "What are you doing buddy in here? This is undignified sir. I only sold the armor I've wrought",
+             "what be you do buddy in here ? this be undignified sir . I only sell the armor I have work",
+             "metadata",
+         )
+    ]
+
+def test_find_different_word_forms(eng_nlp, prepare_example_work):
+    expected_output = {
+        ('I work for him', 'I work for he', 'metadata'),
+        ("What are you doing buddy in here? This is undignified sir. I only sold the armor I've wrought",
+         "what be you do buddy in here ? this be undignified sir . I only sell the armor I have work",
+         "metadata",
+         )
+    }
+
+    res = find_word(eng_nlp, "work")
+
+    assert set(res) == expected_output
+
+    res = find_word(eng_nlp, "works")
+    assert set(res) == expected_output
+
+    res = find_word(eng_nlp, "worked")
+    assert set(res) == expected_output
+
+    res = find_word(eng_nlp, "wrought")
+    assert set(res) == expected_output

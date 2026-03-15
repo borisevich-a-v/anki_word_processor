@@ -8,7 +8,7 @@ from pydantic import BaseModel
 conn = sqlite3.connect(":memory:")
 conn.execute("DROP TABLE IF EXISTS text_data")
 conn.execute(
-    "CREATE VIRTUAL TABLE text_data USING fts5(original_text, lemmatized_text, metadata UNINDEXED)"
+    "CREATE VIRTUAL TABLE text_data USING fts5(original_text, lemmatized_text, context UNINDEXED)"
 )
 
 
@@ -70,14 +70,22 @@ def insert_text_chunk(nlp: Language, text: str) -> None:
     data = lemmatize(nlp, text)
 
     conn.execute(
-        "INSERT INTO text_data(original_text, lemmatized_text, metadata) VALUES (?, ?, ?)",
+        "INSERT INTO text_data(original_text, lemmatized_text, context) VALUES (?, ?, ?)",
         (text, data, "metadata"),
     )
     conn.commit()
 
 
-def find_exact_word(word: str) -> list[Chunk]:
+def find_exact_word(word: str) -> list[tuple[str, str, str]]:
     rows = conn.execute(
-        "SELECT * FROM text_data WHERE original_text MATCH ?", ("wrought",)
+        "SELECT * FROM text_data WHERE original_text MATCH ?", (word,)
+    ).fetchall()
+    return rows
+
+
+def find_word(nlp: Language, word: str) -> list[tuple[str, str, str]]:
+    lemmatized_word = lemmatize(nlp, word)
+    rows = conn.execute(
+        "SELECT * FROM text_data WHERE lemmatized_text MATCH ?", (lemmatized_word,)
     ).fetchall()
     return rows

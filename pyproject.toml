@@ -2,9 +2,40 @@
 name = "process-anki"
 version = "0.1.0"
 description = "Add your description here"
-requires-python = ">=3.12"
+requires-python = "==3.13.*"
 dependencies = [
     "dotenv>=0.9.9",
+    "en-core-web-md",
     "openai>=2.24.0",
+    "pydantic>=2.12.5",
+    "ru-core-news-md",
     "ruff>=0.15.4",
+    "spacy>=3.8.11",
+    "whoosh>=2.7.4",
+    "zh-core-web-sm",
 ]
+
+
+[tool.uv.sources]
+zh-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/zh_core_web_sm-3.8.0/zh_core_web_sm-3.8.0-py3-none-any.whl" }
+en-core-web-md = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl" }
+ru-core-news-md = { url = "https://github.com/explosion/spacy-models/releases/download/ru_core_news_md-3.8.0/ru_core_news_md-3.8.0-py3-none-any.whl" }
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ty]
+[tool.ty.environment]
+python-version = "3.13"
+
+[[tool.ty.overrides]]
+include = ["tests/**/*.py"]
+[tool.ty.overrides.rules]
+invalid-assignment = "ignore"  # More lenient for tests

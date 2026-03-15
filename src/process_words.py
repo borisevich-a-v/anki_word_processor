@@ -8,13 +8,16 @@ from dotenv import load_dotenv
 
 import sqlite3
 
+load_dotenv()
+
 MAX_CARDS_TO_PROCESS = 100
 
-con = sqlite3.connect("internal.db")
+con = sqlite3.connect("../internal.db")
 cur = con.cursor()
-cur.execute("CREATE TABLE IF NOT EXISTS cards(word, phonetic_transcription, russian_translation, explanation, level, example, exercise)")
+cur.execute(
+    "CREATE TABLE IF NOT EXISTS cards(word, phonetic_transcription, russian_translation, explanation, level, example, exercise)"
+)
 
-load_dotenv()
 
 client = OpenAI()
 
@@ -30,10 +33,10 @@ class AnkiCard(BaseModel):
 
 
 prompt = """
-Your goal is to change the input card into the desired format. 
-<Input_card> 
+Your goal is to change the input card into the desired format.
+<Input_card>
 {input_card}
-</Input_card> 
+</Input_card>
 
 The desired format is an object with
 1. word - The word itself
@@ -48,19 +51,19 @@ Use search if it's required. If the word is below C1 usually you don't need sear
 If you used search do not add citation, do not add links, I need you reformulate the search results.
 
 Example:
-Input: 
+Input:
 ['astray', 'His sons went astray — - ru: в неверном направлении; заблудившись']
 
 Output (but no comments, no markdown, no trailing texts):
 {{
 "word": "astray", # english
-"phonetic_transcription": "/əˈstreɪ/", 
+"phonetic_transcription": "/əˈstreɪ/",
 "russian_translation": "сбиться с пути", # russian
 "explanation": "Сбиться с пути (Отклониться от правильного пути или направления или заблудились.)",  # english or russian
-"level": "C1", # Put here just a level (e.g. B2). 
+"level": "C1", # Put here just a level (e.g. B2).
 "example": "His sons went astray", # english
 "exercise": "His sons went _неправильный путь_", # main text is english, the target word in russian.
-}} 
+}}
 
 Return ONLY valid JSON. No markdown. No comments
 """
@@ -73,15 +76,28 @@ def process_cards(card) -> AnkiCard:
         input=prompt.format(input_card=str(card)),
         text_format=AnkiCard,
     ).output_parsed
+    if not result:
+        raise ValueError("Empty card")
+
     return result
+
 
 def save_card(card: AnkiCard) -> None:
     cur.execute(
         f"INSERT INTO cards VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (card.word, card.phonetic_transcription, card.russian_translation, card.explanation, card.level, card.example, card.exercise)
+        (
+            card.word,
+            card.phonetic_transcription,
+            card.russian_translation,
+            card.explanation,
+            card.level,
+            card.example,
+            card.exercise,
+        ),
     )
     con.commit()
     print("saved to SQL")
+
 
 def is_processed(word: str) -> bool:
     res = cur.execute(f"SELECT 1 FROM cards WHERE word=?", (word,)).fetchone()
@@ -90,7 +106,7 @@ def is_processed(word: str) -> bool:
 
 def main():
     cards = []
-    with open("anki_clean_nohtml.tsv", newline="", encoding="utf-8") as f:
+    with open("../anki_clean_nohtml.tsv", newline="", encoding="utf-8") as f:
         reader = csv.reader(f, delimiter="\t")
         for i, row in enumerate(reader):
             word = row[0]
@@ -99,10 +115,10 @@ def main():
             else:
                 print(f"Skipping {word}")
 
-
     for card, _ in zip(cards, range(MAX_CARDS_TO_PROCESS)):
         print(f"Processing {card[0]}")
         processed_card = process_cards(card)
         save_card(processed_card)
+
 
 main()

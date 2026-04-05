@@ -1,10 +1,16 @@
+# Database
 internal.db
+.DS_Store
 
+# Data
+data
 *.tsv
 *.txt
 
+# Secrets
 .env
 
+# Tools
 .venv
-
 .idea
+**/__pycache__/**

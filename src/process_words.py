@@ -49,7 +49,7 @@ class WordsProcessor(Generic[CardT]):
         words_to_process = []
 
         print("Reading words")
-        target_words = self.words.read_text().split('\n')
+        target_words = self.words.read_text().splitlines()
 
         for word in target_words:
             if not self._plugin.is_processed(word):

@@ -1,9 +1,31 @@
+import hashlib
+import json
 import sqlite3
 from enum import StrEnum
+from pathlib import Path
 
 import spacy
 from spacy import Language
 from pydantic import BaseModel
+
+CACHE_DIR = Path(__file__).parents[1] / "data" / ".cache"
+
+
+def _cache_path(text: str) -> Path:
+    digest = hashlib.sha256(text.encode()).hexdigest()
+    return CACHE_DIR / f"{digest}.json"
+
+
+def _load_cache(text: str) -> list[tuple] | None:
+    path = _cache_path(text)
+    if path.exists():
+        return [tuple(row) for row in json.loads(path.read_text(encoding="utf-8"))]
+    return None
+
+
+def _save_cache(text: str, rows: list[tuple]) -> None:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    _cache_path(text).write_text(json.dumps(rows), encoding="utf-8")
 
 conn = sqlite3.connect(":memory:")
 conn.execute("DROP TABLE IF EXISTS text_data")
@@ -67,21 +89,27 @@ def split_text_to_chunks(text: str) -> list[Chunk]:
     return res
 
 
-def insert_text_chunk(nlp: Language, text: str, context: str) -> None:
-    # TODO: insert many
-    data = lemmatize(nlp, text)
-
-    conn.execute(
-        "INSERT INTO text_data(original_text, lemmatized_text, context) VALUES (?, ?, ?)",
-        (text, data, context),
-    )
-    conn.commit()
-
 
 def ingest_text(nlp: Language, text: str) -> None:
+    if cached := _load_cache(text):
+        conn.executemany(
+            "INSERT INTO text_data(original_text, lemmatized_text, context) VALUES (?, ?, ?)",
+            cached,
+        )
+        conn.commit()
+        return
+
     chunks = split_text_to_chunks(text)
+    rows = []
     for chunk in chunks:
-        insert_text_chunk(nlp, chunk.chunk, chunk.context)
+        lemmatized = lemmatize(nlp, chunk.chunk)
+        conn.execute(
+            "INSERT INTO text_data(original_text, lemmatized_text, context) VALUES (?, ?, ?)",
+            (chunk.chunk, lemmatized, chunk.context),
+        )
+        rows.append((chunk.chunk, lemmatized, chunk.context))
+    conn.commit()
+    _save_cache(text, rows)
 
 
 def find_exact_word(word: str) -> list[tuple[str, str, str]]:

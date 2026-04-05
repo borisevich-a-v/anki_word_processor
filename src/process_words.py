@@ -52,11 +52,14 @@ class WordsProcessor(Generic[CardT]):
         target_words = self.words.read_text().splitlines()
 
         for word in target_words:
+            if any(c in word for c in (',', ';', '|', '\t')):
+                print(f"Skipping {word!r}: contains separator character")
+                continue
             if not self._plugin.is_processed(word):
-                print("Found a word to process")
                 words_to_process.append(word)
             else:
-                print(f"Skipping {word}. As it was processed")
+                pass
+        print(f"There are {len(words_to_process)} words to process")
         return words_to_process
 
     def process_words(self):

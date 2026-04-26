@@ -9,5 +9,5 @@ powershell -NoProfile -Command ^
   "[Console]::OutputEncoding=[Text.Encoding]::UTF8;" ^
   "[Console]::InputEncoding=[Text.Encoding]::UTF8;" ^
   "$OutputEncoding=[Text.Encoding]::UTF8;" ^
-  "uv run src/main.py 2>&1 | Tee-Object -FilePath '%LOG_FILE%' -Encoding utf8"
+  "uv run src/main.py 2>&1 | Tee-Object -FilePath '%LOG_FILE%' "
 pause

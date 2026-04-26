@@ -45,8 +45,9 @@ class WordsProcessor(Generic[CardT]):
             return format_context(res)
         return ''
 
-    def get_target_words_from_file(self):
+    def get_target_words_from_file(self) -> tuple[list[str], list[str]]:
         words_to_process = []
+        skipped_separator = []
 
         print("Reading words")
         target_words = self.words.read_text().splitlines()
@@ -54,16 +55,19 @@ class WordsProcessor(Generic[CardT]):
         for word in target_words:
             if any(c in word for c in (',', ';', '|', '\t')):
                 print(f"Skipping {word!r}: contains separator character")
+                skipped_separator.append(word)
                 continue
             if not self._plugin.is_processed(word):
                 words_to_process.append(word)
-            else:
-                pass
         print(f"There are {len(words_to_process)} words to process")
-        return words_to_process
+        return words_to_process, skipped_separator
 
-    def process_words(self):
-        words_to_process = self.get_target_words_from_file()
+    def process_words(self) -> dict:
+        words_to_process, skipped_separator = self.get_target_words_from_file()
+
+        processed = []
+        failed = []
+        skipped_limit = words_to_process[config.MAX_CARDS_TO_PROCESS:]
 
         for word, _ in zip(words_to_process, range(config.MAX_CARDS_TO_PROCESS)):
             print(f"Processing word: {word}")
@@ -73,5 +77,17 @@ class WordsProcessor(Generic[CardT]):
             print(f"For {word} found context: {context}")
             card += f"<CONTEXT OF USAGE>\n{context}\n<CONTEXT OF USAGE>"
 
-            processed_card = self.process_card(card)
-            self._plugin.save_card(processed_card)
+            try:
+                processed_card = self.process_card(card)
+                self._plugin.save_card(processed_card)
+                processed.append(word)
+            except Exception as e:
+                print(f"ERROR processing {word!r}: {e}")
+                failed.append((word, str(e)))
+
+        return {
+            "processed": processed,
+            "failed": failed,
+            "skipped_separator": skipped_separator,
+            "skipped_limit": skipped_limit,
+        }

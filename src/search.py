@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 import sqlite3
 from enum import StrEnum
 from pathlib import Path
@@ -9,6 +10,8 @@ from spacy import Language
 from pydantic import BaseModel
 
 CACHE_DIR = Path(__file__).parents[1] / "data" / ".cache"
+CHUNK_TOKEN_LIMIT = 10  # must match split_text_to_chunks chunk size
+_WORD_CHAR = re.compile(r"\w", re.UNICODE)
 
 
 def _cache_path(text: str) -> Path:
@@ -44,9 +47,12 @@ def get_nlp(lang: SpacyPipeline) -> Language:
     return spacy.load(lang)
 
 
-def lemmatize(nlp: Language, text: str):
+def lemmatize(nlp: Language, text: str) -> str:
     doc = nlp(text)
-    return " ".join([t.lemma_ for t in doc])
+    return " ".join(
+        lemma for t in doc
+        if (lemma := t.lemma_.strip()) and _WORD_CHAR.search(lemma)
+    )
 
 
 class Chunk(BaseModel):
@@ -112,17 +118,53 @@ def ingest_text(nlp: Language, text: str) -> None:
     _save_cache(text, rows)
 
 
+def _fts5_tokens(text: str) -> list[str]:
+    return [t for t in text.split() if t]
+
+
+def _quote(token: str) -> str:
+    return '"' + token.replace('"', '""') + '"'
+
+
+def _fts5_phrase(text: str) -> str | None:
+    tokens = _fts5_tokens(text)
+    if not tokens:
+        return None
+    return _quote(" ".join(tokens))
+
+
+def _fts5_near(text: str) -> str | None:
+    tokens = _fts5_tokens(text)
+    if len(tokens) < 2:
+        return None
+    span = min(len(tokens) + 3, CHUNK_TOKEN_LIMIT - 1)
+    if len(tokens) >= CHUNK_TOKEN_LIMIT - 1:
+        return None
+    return f"NEAR({' '.join(_quote(t) for t in tokens)}, {span})"
+
+
+def _fts5_bag(text: str) -> str | None:
+    tokens = _fts5_tokens(text)
+    if not tokens:
+        return None
+    return " ".join(_quote(t) for t in tokens)
+
+
+def _match(column: str, text: str) -> list[tuple[str, str, str]]:
+    sql = f"SELECT * FROM text_data WHERE {column} MATCH ?"
+    for query in (_fts5_phrase(text), _fts5_near(text), _fts5_bag(text)):
+        if query is None:
+            continue
+        rows = conn.execute(sql, (query,)).fetchall()
+        if rows:
+            return rows
+    return []
+
+
 def find_exact_word(word: str) -> list[tuple[str, str, str]]:
     # TODO: return a custom type
-    rows = conn.execute(
-        "SELECT * FROM text_data WHERE original_text MATCH ?", (word,)
-    ).fetchall()
-    return rows
+    return _match("original_text", word)
 
 
 def find_word(nlp: Language, word: str) -> list[tuple[str, str, str]]:
-    lemmatized_word = lemmatize(nlp, word)
-    rows = conn.execute(
-        "SELECT * FROM text_data WHERE lemmatized_text MATCH ?", (lemmatized_word,)
-    ).fetchall()
-    return rows
+    return _match("lemmatized_text", lemmatize(nlp, word))

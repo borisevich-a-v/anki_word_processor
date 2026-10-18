@@ -1,0 +1,40 @@
+{% macro names(summary, items, id="") %}{% if items %}<details{% if id %} id="{{ id }}" hx-preserve{% endif %}><summary>{{ summary }}</summary>
+<ul class="terms">{% for item in items %}<li>{{ caller(item) }}</li>{% endfor %}</ul></details>{% endif %}{% endmacro %}
+<div id="status"{% if job.state == "idle" %} data-idle{% else %} data-plugin="{{ job.plugin }}" data-terms="{{ job.terms }}" data-source="{{ job.source }}"{% endif %}{% if job.state == "running" %} class="running" hx-get="/status" hx-trigger="every 500ms" hx-swap="outerHTML" data-done="{{ job.done }}" data-total="{{ job.total }}"{% endif %}{% if job.state == "done" %} data-made="{{ job.result.made|length }}"{% endif %}>
+{% if job.state != "idle" %}<p id="stale" class="stale-note">These results are for <b>{{ job.terms or "no file" }}</b> ({{ run_pair }}), not for the current choices.</p>{% endif %}
+<div id="report">
+{%- if job.report and job.state != "error" -%}
+<p class="for">Report for <b>{{ job.terms }}</b>{% if job.source %}, source text <b>{{ job.source }}</b>{% endif %} — {{ run_pair }}</p>
+{% if not job.report.total %}<p>The file has no terms: no cards will be made.</p>
+{% else %}<p>Terms in the file: {{ job.report.total }}. To process in this run: {{ job.report.to_process|length }}.{% if job.report.duplicates %} <span class="muted">({{ job.report.duplicates }} repeated {{ "line" if job.report.duplicates == 1 else "lines" }} ignored)</span>{% endif %}</p>
+{% if not job.report.to_process %}<p>No term is left to process: no cards will be made.</p>{% endif %}{% endif %}
+{% call(term) names("Already have a card: " ~ job.report.existing|length ~ " (skipped)", job.report.existing, "d-existing") %}{{ term }}{% endcall %}
+{% call(term) names("Limit reached: " ~ job.report.over_limit|length ~ " left for the next run", job.report.over_limit, "d-over") %}{{ term }}{% endcall %}
+{%- endif -%}
+</div>
+{% if job.state == "running" %}<p class="progress">
+<progress id="bar" {% if not job.cancel.is_set() %}value="{{ job.done }}" {% endif %}max="{{ job.total or 1 }}"></progress>
+<button id="cancel" type="button" hx-post="/cancel" hx-target="#status" hx-swap="outerHTML"{% if job.cancel.is_set() %} disabled{% endif %}>{{ "Cancelling…" if job.cancel.is_set() else "Cancel" }}</button>
+<span id="timing" class="muted">{{ job.timing() }}</span></p>{% endif %}
+<p id="msgline"><span id="msg">
+{%- if job.state == "error" -%}
+<span class="err">{{ job.error }}</span>
+{%- elif job.state == "running" -%}
+{% if job.cancel.is_set() %}Finishing the term in hand, {{ job.term }} ({{ job.done }}/{{ job.total }}){% elif job.total %}{{ job.done }}/{{ job.total }} — {{ job.term }}{% else %}Starting…{% endif %}
+{%- endif -%}
+</span></p>
+<div id="summary">
+{%- if job.state == "done" -%}
+{% if job.report and job.report.total %}<p class="ok"><b>Cards made: {{ job.result.made|length }}</b> <span class="muted">({{ job.timing() }})</span></p>
+{% if not job.result.made and kept_marks %}<p class="muted">No cards were made; the green bars still mark the cards of the run before.</p>{% endif %}{% endif %}
+{% if job.result.failed %}<div class="err" id="failed"><p>Failed: {{ job.result.failed|length }}</p>
+<ul class="terms">{% for term, reason in job.result.failed %}<li><b>{{ term }}</b> — {{ reason }}</li>{% endfor %}</ul></div>{% endif %}
+{% call(term) names("Cancelled: " ~ job.result.cancelled|length ~ " left for the next run", job.result.cancelled) %}{{ term }}{% endcall %}
+{% call(term) names("Limit reached: " ~ job.result.limit_reached|length ~ " left for the next run", job.result.limit_reached) %}{{ term }}{% endcall %}
+{% if not_processed %}<p class="actions">
+{% if job.result.failed %}<button id="copyfailed" type="button" data-terms="{{ job.result.failed|map('first')|join('\n') }}">Copy failed terms</button>{% endif %}
+<button id="again" type="button" hx-post="/run" hx-vals='{{ {"plugin": job.plugin, "terms": job.terms, "source": job.source}|tojson }}' hx-target="#status" hx-swap="outerHTML">Run again with {{ job.terms }}: {{ left }} {{ "term" if left == 1 else "terms" }} left</button></p>{% endif %}
+{%- endif -%}
+</div>
+</div>
+{% if clear_note %}<span id="note" hx-swap-oob="true"></span>{% endif %}

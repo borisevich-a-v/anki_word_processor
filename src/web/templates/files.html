@@ -1,0 +1,13 @@
+<label>Terms file
+<select id="terms" name="terms">
+<option value="">Choose a file…</option>
+{% for f in files %}<option>{{ f }}</option>
+{% endfor %}</select></label>
+<label>Source text (optional)
+<select id="source" name="source"><option value="">(none)</option>
+{% for f in files %}<option>{{ f }}</option>
+{% endfor %}</select></label>
+<span id="filehint" class="hint wide">
+{%- if not files %}The data folder has no files yet. Put a terms file (one term per line) there; it shows up in the lists by itself:
+<code>{{ data_folder }}</code>{% endif -%}
+</span>

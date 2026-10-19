@@ -54,7 +54,8 @@ If you used an earlier version, move your files and `internal.db` into
 
 ## Development
 
-What the tool does is described in [doc/specs](doc/specs). How changes are
+What the tool does is described in [.scratch](.scratch) (one folder per aspect) and
+[doc/specs](doc/specs). How changes are
 made, and the commands for the tests and checks, are in
 [AGENTS.md](AGENTS.md). `make` lists shortcuts for them and for starting
 the tool (`make run`, `make stage`, `make check`, ...).

@@ -4,7 +4,7 @@
 What the tool needs from the user's machine before it can be used: where it
 reads and writes files, where it keeps the cards, and how it is allowed to
 write cards. What is done with these is in
-[making-cards.md](making-cards.md) and [export.md](export.md).
+[making-cards.md](../../.scratch/making-cards/issues/01-making-cards.md) and [export.md](../../.scratch/export/issues/01-export.md).
 
 ## User scenarios
 
@@ -24,14 +24,14 @@ profile. I can have it open beside the real one.
   `data/stage` for the stage profile. Terms files and source texts are read
   from the folder of the profile in use; the card store (SU-2), which lies in
   that folder too, is never offered as one of them. Where export files go is the user's
-  choice (EX-5 in [export.md](export.md)).
+  choice (EX-5 in [export.md](../../.scratch/export/issues/01-export.md)).
 - **SU-2 Card store.** The cards of a profile are kept in one file,
   `internal.db`, inside that profile's folder (SU-1). Removing that file
   removes all cards of that profile and no others.
 - **SU-3 API key.** Card writing with a real LLM needs an OpenAI API key. The
   tool takes it from `OPENAI_API_KEY`, set either in the environment or in a
   file `.env` in the tool's own folder. Without a key a run cannot proceed and
-  the user sees an error (MC-13 in [making-cards.md](making-cards.md)). The
+  the user sees an error (MC-13 in [making-cards.md](../../.scratch/making-cards/issues/01-making-cards.md)). The
   stage profile needs no key unless it is told to use the real LLM (SU-6).
 - **SU-4 Starting.** When the tool is started it prints the address of its
   page. It does not open a browser.
@@ -52,13 +52,3 @@ profile. I can have it open beside the real one.
 - **SU-7 Stage is recognisable and separate.** The page of the stage profile
   says so on every screen (a banner and the page title), and it is served on
   another address than `prod`'s, so both can run at once.
-
-## History
-
-- 007-unspecified-behaviour: spec written to describe existing behaviour,
-  except SU-4, which is new: the tool no longer opens the browser.
-- 009-save-dialog: SU-1 no longer says export files are written to the data
-  folder.
-- 011-stage-profile: data and card store move into a folder per profile
-  (SU-1, SU-2); profiles, the stage card writer and its marker added (SU-5 to
-  SU-7); SU-3 says the stage profile needs no key.

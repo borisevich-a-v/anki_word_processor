@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% if stage %}[STAGE] {% endif %}Anki card builder</title>
+<style>
+:root{--blue:#2457d6;--line:#ddd;--muted:#666}
+*{box-sizing:border-box}
+body{font:14px/1.4 system-ui;margin:0;padding:16px 24px 48px;background:#fafafa;color:#222}
+h1{margin:0 0 12px;font-size:22px} h2{margin:20px 0 8px;font-size:18px}
+h2#cardstitle{position:sticky;top:env(safe-area-inset-top,0px);z-index:4;background:#fafafa;margin:0;padding:12px 0 8px}
+#cardprogress{font-weight:400;color:var(--muted);margin-left:.6em} #cardprogress:empty{display:none}
+#paused{background:#fff6e0;border:1px solid #e8c36a;border-radius:4px;padding:4px 8px}
+td.fix{outline:2px solid #b00;outline-offset:-2px;background:#fdeaea}
+section{background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+p{margin:8px 0} p:empty{display:none}
+ul.terms li,#failed{overflow-wrap:anywhere}
+select,button,input,textarea{font:inherit;padding:5px 8px}
+button{cursor:pointer;border:1px solid #aaa;border-radius:4px;background:#fff;line-height:1.4}
+label select{width:100%}
+button:disabled{cursor:not-allowed;opacity:.5}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+.pickers{display:contents}
+label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:#555}
+.muted,.hint{color:var(--muted)} .hint{font-size:13px;color:#555} .wide{flex-basis:100%;order:10}
+#filehint:empty{display:none}
+#formmsg{line-height:1.4}
+#formmsg:not(:has(span:not(:empty))){display:none}
+.top{display:flex;gap:12px;align-items:center;justify-content:space-between}
+#helpbtn{white-space:nowrap}
+#help{max-width:min(92vw,640px);max-height:88vh;padding:16px 24px;overflow:hidden}
+#help[open]{display:flex;flex-direction:column}
+#help h2{margin-top:0;flex:none} #help .helpbody{overflow:auto;flex:1 1 auto;min-height:0}
+#help h3{margin:16px 0 4px;font-size:15px} #help ul{margin:4px 0;padding-left:20px} #help li{margin:3px 0}
+#help form{flex:none} #help .actions{margin:12px 0 0}
+@media (hover:none){.kb{display:none}}
+p.for{margin:8px 0 2px;color:#444}
+#stale{display:none;max-width:60em;background:#fff6e0;border:1px solid #e8c36a;border-radius:4px;padding:4px 8px}
+#status.stale #stale{display:block}
+#status.stale #report,#status.stale #summary>:not(.actions){opacity:.45}
+#msgline:has(#msg:empty){display:none}
+code{background:#f1f1f1;padding:1px 4px;border-radius:3px;word-break:break-all}
+.err{color:#b00} .ok{color:#080}
+progress{width:min(300px,100%)}
+p.progress{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+details{margin:4px 0} summary{cursor:pointer;color:#444}
+ul.terms{margin:4px 0 8px;max-height:200px;overflow:auto;padding-left:24px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.bar{display:flex;gap:10px 20px;flex-wrap:wrap;align-items:center}
+.grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.grp.end{margin-left:auto}
+details.range{border:0;margin:0;position:relative}
+details.range .pop{position:absolute;top:calc(100% + 4px);left:0;z-index:5;background:#fff;border:1px solid #bbb;border-radius:6px;padding:10px;box-shadow:0 4px 14px #0003;width:max-content;max-width:calc(100vw - 32px);align-items:end}
+details.range label{font-size:12px}
+button.primary{background:var(--blue);color:#fff;border:1px solid #1b44aa}
+button.danger{color:#b00;border:1px solid #d99;background:#fff}
+button.danger.solid{background:#b00;color:#fff;border-color:#800}
+#sel{color:#444;font-weight:600}
+.bar2{display:flex;gap:8px 14px;align-items:center;margin-top:8px;flex-wrap:wrap}
+#exmsg:empty{display:none}
+#exmsg{flex:1 1 200px;color:#145a14;font-weight:600;overflow-wrap:anywhere} #exmsg.cancel{color:#555}
+#exmsg.err{color:#b00}
+#delete{margin-left:auto}
+.tbl{max-height:max(320px,calc(100vh - 220px));overflow:auto;margin-top:10px;border:1px solid #eee}
+table{border-collapse:collapse;width:100%}
+th{white-space:nowrap;overflow-wrap:normal}
+td:nth-child(2){min-width:3.2em} td:nth-child(3){min-width:8em}
+th:first-child,td:first-child{position:sticky;left:0;background:inherit}
+th:first-child{z-index:3;background:#f3f3f3}
+tbody tr{background:#fff;user-select:none;-webkit-user-select:none}
+td.editing,td.editing *{user-select:text;-webkit-user-select:text}
+tr.new td:first-child{box-shadow:inset 4px 0 0 #2e9e44}
+th,td{padding:4px 8px;border-bottom:1px solid #eee;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+th{position:sticky;top:0;z-index:1;background:#f3f3f3}
+tbody tr{cursor:pointer} tbody tr:hover{background:#f7f9ff}
+tr.new{background:#effaef} tr.sel{background:#e8f0ff}
+tr:focus-visible{outline-offset:-2px}
+td[data-field]{cursor:text;position:relative}
+td[data-field]:hover::after{content:"✎";position:absolute;right:2px;top:2px;font-size:12px;color:#444}
+td.editing{padding:0} td.editing::after{content:none}
+td textarea{width:100%;display:block;resize:vertical;padding:4px 6px;min-height:30px;border:2px solid var(--blue);border-radius:3px}
+td textarea.bad{border-color:#b00}
+.empty{padding:16px;color:var(--muted)}
+#stage{background:#f5a623;color:#222;font-weight:600;padding:4px 12px;margin:-16px -24px 12px;text-align:center}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+#cardmsg:not(.show){display:none}
+#cardmsg.show{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);max-width:min(90vw,520px);background:#222;color:#fff;padding:10px 16px;border-radius:6px;box-shadow:0 2px 10px #0004;z-index:10;display:flex;gap:12px;align-items:flex-start;margin:0}
+#cardmsg button{background:none;color:inherit;border:0;padding:0 4px;font-size:18px;line-height:1;margin-left:auto}
+#cardmsg button:empty::before{content:"×"}
+#cardmsg .t{overflow-wrap:anywhere}
+#cardmsg.err{background:#b00}
+dialog{border:1px solid #bbb;border-radius:8px;padding:20px 24px;max-width:min(92vw,420px)}
+dialog::backdrop{background:#0006}
+dialog .actions{justify-content:flex-end;margin-top:16px}
+@media (max-width:640px){
+ body{padding:12px 16px 40px} #stage{margin:-12px -16px 12px}
+ .row label,.row>button{flex:1 1 100%}
+ .bar{flex-direction:column;align-items:stretch}
+ #exmsg{flex-basis:100%;order:3}
+ #delete{margin-left:0}
+ .tbl{max-height:none}
+ /* each card is a stack of labelled fields, so no field is out of sight */
+ table,tbody{display:block}
+ thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+ tbody tr{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:0 8px;padding:6px 8px;border-bottom:1px solid #ddd}
+ tr.new{box-shadow:inset 4px 0 0 #2e9e44} tr.new td:first-child{box-shadow:none}
+ td,th{padding:2px 0;border:0}
+ td:nth-child(2),td:nth-child(3){min-width:0}
+ td:first-child{position:static}
+ td.id{color:var(--muted)} td.id::before{content:"id "}
+ td[data-field]{grid-column:1/-1;display:grid;grid-template-columns:7em minmax(0,1fr);gap:8px;padding:3px 0;border-top:1px solid #f0f0f0}
+ td[data-field]::before{content:attr(data-label);color:var(--muted);font-size:12px;padding-top:2px}
+ td.editing{padding:3px 0}
+}
+</style>
+<script src="/static/htmx.min.js"></script>
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+{% if stage %}<div id="stage">STAGE profile: test data, not your real cards</div>
+{% endif %}<div class="top"><h1>Anki card builder</h1>
+<button id="helpbtn" type="button" aria-haspopup="dialog" aria-keyshortcuts="F1" title="Help (F1)">Help<span class="kb"> (F1)</span></button></div>
+<main>
+<section>
+<form id="runform" class="row" hx-post="/run" hx-target="#status" hx-swap="outerHTML">
+<label>Language pair
+<select id="plugin" name="plugin" hx-get="/cards" hx-target="#list" hx-swap="innerHTML">
+{% for name in plugins %}<option value="{{ loop.index0 }}"{% if loop.index0 == plugin %} selected{% endif %}>{{ name }}</option>
+{% endfor %}</select></label>
+<div id="pickers" class="pickers">{% include "files.html" %}</div>
+<button id="run" class="primary">Make cards</button>
+<span id="formmsg" class="err wide" role="alert"><span id="samewarn"></span><span id="note"></span></span>
+</form>
+{% include "status.html" %}
+</section>
+<h2 id="cardstitle">Cards: <span id="pair">{{ pair }}</span><span id="cardprogress"></span></h2>
+<section class="cards">
+<div class="bar">
+<div class="grp">
+<button id="lastrun">Select last run</button>
+<button id="all">Select all</button>
+<button id="none">Clear</button>
+<span id="sel" aria-live="polite"></span>
+</div>
+<details class="range"><summary>Select by id range</summary>
+<div class="grp pop">
+<label>From id<input id="from" size="5" type="number"></label>
+<label>To id<input id="to" size="5" type="number"></label>
+<button id="range">Select range</button>
+</div></details>
+</div>
+<div class="bar2">
+<button id="export" class="primary">Export selected (<span id="exn">0</span>)</button>
+<span id="exmsg" role="status"></span>
+<button id="delete" class="danger">Delete selected (<span id="deln">0</span>)</button>
+</div>
+<p id="paused" class="hint" role="status" hidden></p>
+<div id="list" class="tbl" hx-get="/cards?after_run=1" hx-include="#plugin" hx-trigger="run-finished from:body, run-progress from:body">
+{% include "cards.html" %}
+</div>
+</section>
+</main>
+<p id="cardmsg" role="status"><span class="t"></span><button type="button" aria-label="Close message"></button></p>
+<dialog id="help" aria-labelledby="helptitle">
+<h2 id="helptitle">How to use this tool</h2>
+<div class="helpbody">
+<h3>1. Prepare your files</h3>
+<ul>
+<li>Put your files into the data folder: <code>{{ data_folder }}</code>.</li>
+<li>A <b>terms file</b> is a text file with one term per line. Repeated lines, in any letter case, count once.</li>
+<li>A <b>source text</b> is optional: any text file where your terms occur. When given, example sentences are taken from it.</li>
+<li>Added a file while the page was open? It shows up in the lists by itself.</li>
+</ul>
+<h3>2. Make cards</h3>
+<ul>
+<li>Choose the <b>language pair</b>, the <b>terms file</b> and, if you have one, the <b>source text</b>, then press <b>Make cards</b>.</li>
+<li>First a report appears: how many terms the file has, how many will be processed, and which already have a card (those are skipped, so nothing is made twice).</li>
+<li>A progress bar shows the term being worked on. <b>Cancel</b> stops after the term in hand; cards already made are kept.</li>
+<li>When it ends you see how many cards were made and which terms failed (with the reason) or were left for the next run. <b>Run again</b> processes just the terms left.</li>
+<li>New cards appear in the list below as soon as they are made.</li>
+</ul>
+<h3>3. Check and correct the cards</h3>
+<ul>
+<li>The list shows the cards of the chosen language pair, oldest first. A <b>green bar</b> on the left marks the cards of the last run.</li>
+<li>Click or tap a card to select it<span class="kb">; Shift-click selects a stretch of cards</span>. <b>Select last run</b>, <b>Select all</b>, <b>Select by id range</b> and <b>Clear</b> help with bigger selections.</li>
+<li>Double-click or double-tap a field to edit it<span class="kb">, or press Enter on a card</span>. Clicking away saves<span class="kb">; Enter saves, Tab saves and goes to the next field, Esc cancels</span>. A change that breaks a rule of the language pair is refused with the reason, and the card stays as it was.</li>
+<li>Edits are saved at once and are still there after a restart.</li>
+</ul>
+<h3>4. Delete what you do not want</h3>
+<ul>
+<li>Select the cards and press <b>Delete selected</b>. You are asked to confirm and it cannot be undone. The term can be made again by a later run.</li>
+</ul>
+<h3>5. Export to Anki</h3>
+<ul>
+<li>Select the cards to take, press <b>Export selected</b> and choose where to save the file (some browsers save it to Downloads).</li>
+<li>In Anki use <b>File → Import</b> and pick that file. Exporting does not change or delete your cards, so you can export again.</li>
+</ul>
+<h3 class="kb">Keys</h3>
+<ul class="kb">
+<li>Tab goes to the card list; arrows, Home and End move between cards.</li>
+<li>Space selects or unselects the card in focus; Enter edits its first field; Delete deletes the selected cards (after asking).</li>
+<li>F1 opens or closes this help; Esc closes it.</li>
+</ul>
+</div>
+<form method="dialog"><p class="actions"><button id="helpclose">Close</button></p></form>
+</dialog>
+<dialog id="confirm" aria-labelledby="confirmq">
+<form method="dialog">
+<p id="confirmq">Delete <b id="n"></b> <span id="ncards">cards</span> for good: <b id="names"></b>? This cannot be undone.</p>
+<p id="allwarn" class="err" hidden><b>That is every card of this language pair.</b></p>
+<p class="actions"><button id="keep" value="keep" autofocus>Keep</button> <button id="yes" value="yes" class="danger solid">Delete</button></p>
+</form>
+</dialog>
+</body>
+</html>

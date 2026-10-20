@@ -1,18 +1,19 @@
 [project]
 name = "process-anki"
 version = "0.1.0"
-description = "Add your description here"
+description = "A local tool that prepares Anki cards from a list of terms"
 requires-python = "==3.13.*"
 dependencies = [
-    "click>=8.3.1",
-    "dotenv>=0.9.9",
     "en-core-web-md",
+    "fastapi>=0.142.2",
+    "jinja2>=3.1.6",
     "openai>=2.24.0",
     "pydantic>=2.12.5",
+    "python-dotenv>=1.2.4",
+    "python-multipart>=0.0.32",
     "ru-core-news-md",
-    "ruff>=0.15.4",
     "spacy>=3.8.11",
-    "whoosh>=2.7.4",
+    "uvicorn>=0.54.0",
     "zh-core-web-md",
 ]
 
@@ -26,6 +27,9 @@ ru-core-news-md = { url = "https://github.com/explosion/spacy-models/releases/do
 dev = [
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",
+    "pytest-playwright>=0.9.0",
+    "ruff>=0.15.6,<0.16",
+    "ty>=0.0.84",
 ]
 
 [tool.pytest.ini_options]

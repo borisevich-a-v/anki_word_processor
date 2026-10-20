@@ -1,0 +1,9 @@
+<input type="hidden" name="plugin" value="{{ plugin }}">
+<table>
+{% if cards %}<thead><tr id="head"><th><span class="sr">select</span></th><th>id</th>{% for f in fields %}<th>{{ f }}</th>{% endfor %}</tr></thead>{% endif %}
+<tbody id="body">
+{% for card in cards %}<tr data-id="{{ card[0] }}" tabindex="-1"{% if card[0] in new %} class="new" title="From the last run"{% endif %}><td><input type="checkbox" tabindex="-1" aria-label="Select card {{ card[0] }}" name="ids" value="{{ card[0] }}"></td><td class="id" data-label="id">{{ card[0] }}</td><td data-field="0" data-label="{{ fields[0] }}"><b>{{ card[1] }}</b></td>{% for v in card[2:] %}<td data-field="{{ loop.index }}" data-label="{{ fields[loop.index] }}">{{ v }}</td>{% endfor %}</tr>
+{% endfor %}</tbody>
+</table>
+{% if not cards %}<p id="empty" class="empty">No cards yet for {{ pair }}. Choose a terms file above and press <b>Make cards</b>; the cards will appear here.</p>{% endif %}
+{% if clear_export %}<span id="clearmsgs" hidden></span>{% endif %}
